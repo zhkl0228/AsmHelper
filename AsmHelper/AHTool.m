@@ -59,7 +59,7 @@
 */
 #pragma mark - Prototypes
 
-static NSString * hexa_from_bytes(const uint8_t *bytes, size_t size);
+static NSString * hexa_from_bytes(const uint8_t *bytes, size_t size, ks_mode mode);
 static NSData * data_from_hexa(NSString *hexadecimal);
 
 
@@ -206,7 +206,7 @@ static NSData * data_from_hexa(NSString *hexadecimal);
 	}];
 	
 	// Create hexadecimal representation.
-	NSString *assembly = hexa_from_bytes(insn, size);
+	NSString *assembly = hexa_from_bytes(insn, size, mode);
 
 	[cleaner self]; // Force ARC to keep it alive up to this point.
 	
@@ -293,7 +293,7 @@ static inline uint8_t hexa_value(uint8_t value)
 		return value;
 }
 
-static NSString * hexa_from_bytes(const uint8_t *bytes, size_t size)
+static NSString * hexa_from_bytes(const uint8_t *bytes, size_t size, ks_mode mode)
 {
 	// Convert the raw string to hexadecimal.
 	const char	*hexa = "0123456789ABCDEF";
@@ -314,7 +314,20 @@ static NSString * hexa_from_bytes(const uint8_t *bytes, size_t size)
 	*raw = '\0';
 	
 	// Build string.
-	return [[NSString alloc] initWithBytesNoCopy:result_c length:strlen(result_c) encoding:NSASCIIStringEncoding freeWhenDone:YES];
+	NSString *hex = [[NSString alloc] initWithBytesNoCopy:result_c length:strlen(result_c) encoding:NSASCIIStringEncoding freeWhenDone:YES];
+    if(size == 2) {
+        unsigned int code = ((unsigned short *) bytes)[0];
+        return [NSString stringWithFormat:@"%@ => 0x%04x", hex, code];
+    } else if(size == 4) {
+        if(mode & KS_MODE_THUMB) {
+            unsigned short *thumb2 = (unsigned short *) bytes;
+            return [NSString stringWithFormat:@"%@ => 0x%04x, 0x%04x", hex, thumb2[0], thumb2[1]];
+        } else {
+            unsigned int code = ((unsigned int *) bytes)[0];
+            return [NSString stringWithFormat:@"%@ => 0x%08x", hex, code];
+        }
+    }
+    return hex;
 }
 
 static NSData * data_from_hexa(NSString *hexadecimal)
